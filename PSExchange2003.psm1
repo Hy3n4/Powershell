@@ -430,9 +430,11 @@ function Get-2003User {
         } else {
             $objSearcher.SearchRoot = $objDomain
         }
-        $objSearcher.SizeLimit = $ResultSize
-        #$objSearcher.PageSize = $ResultSize / 10
-        $objSearcher.SearchScope = 'Subtree'
+        #$objSearcher.SizeLimit = $ResultSize
+        $objSearcher.PageSize = $ResultSize
+        $objSearcher.SearchScope = "Subtree"
+        #$objSearcher.CacheResults = $false
+        $objSearcher.PropertiesToLoad.AddRange(@('samaccountname','sidhistory','userprincipalname','givenname','sn','name','displayname','displaynameprintable','distinguishedname','employeenumber','useraccountcontrol','mail','title','department','company','streetaddress','l','postalcode','co','physicaldeliveryofficename','description','homemdb','proxyaddresses','telephonenumber','othertelephone','mobile','fascimiletelephonenumber','homephone','msexchassistantname','telephoneassistant','objectcategory','objectclass','pwdlastset','whenchanged','whencreated'))
     }
     Process {
         foreach ($user in $Identity){
@@ -446,7 +448,6 @@ function Get-2003User {
                 Write-Warning "Result is limited to $ResultSize. Use -ResultSize option to increase search result size."
             }
 	        $objSearcher.Filter = $strFilter
-            $objSearcher.PropertiesToLoad.AddRange(@('samaccountname','sidhistory','userprincipalname','givenname','sn','name','displayname','displaynameprintable','distinguishedname','employeenumber','useraccountcontrol','mail','title','department','company','streetaddress','l','postalcode','co','physicaldeliveryofficename','description','homemdb','proxyaddresses','telephonenumber','othertelephone','mobile','fascimiletelephonenumber','homephone','msexchassistantname','telephoneassistant','objectcategory','objectclass','pwdlastset','whenchanged','whencreated'))
 	        Try {
 		        $colResults = $objSearcher.FindAll()
 	        } Catch {
@@ -458,68 +459,12 @@ function Get-2003User {
             $count = 0
 	        foreach ($objResult in $colResults) {
 		        $objItem = $objResult.Properties
-                if ($Progress) {
-                    Write-Progress -Activity "Generating Object #. $count from $($colResults.Count) for User: $($objItem.userprincipalname)" -PercentComplete (($count / $colResults.Count) * 100) -Status "Working.."
-                }
-                <#
-                if ($objItem.samaccountname) {
-			        $sAMAccountName = $objItem.samaccountname[0]
-		        } else {
-			        $sAMAccountName = ''
-		        } #>
                 if ($objItem.objectsid) {
                     $stringSID = (New-Object System.Security.Principal.SecurityIdentifier($objItem.objectsid[0],0))
 			        $Sid =  $stringSID
 		        } else {
 			        $Sid = ''
 		        }
-                <#
-                if ($objItem.sidhistory) {
-			        $SidHistory = $objItem.sidhistory
-		        } else {
-			        $SidHistory = @{}
-		        }		
-                if ($objItem.userprincipalname) {
-			        $UserPrincipalName = $objItem.userprincipalname[0]
-		        } else {
-			        $UserPrincipalName = ''
-		        }
-                if ($objItem.givenname) {
-			        $FirstName = $objItem.givenname[0]
-		        } else {
-			        $FirstName = ''
-		        }
-                if ($objItem.sn) {
-			        $lastName = $objItem.sn[0]
-		        } else {
-			        $lastName = ''
-		        }
-                if ($objItem.name) {
-			        $Name = $objItem.name[0]
-		        } else {
-			        $Name = ''
-		        }
-		        if ($objItem.displayname) {
-			        $DisplayName = $objItem.displayname[0]
-		        } else {
-			        $DisplayName = ''
-		        }
-                if ($objItem.displaynameprintable) {
-			        $SimpleDisplayName = $objItem.displaynameprintable[0]
-		        } else {
-			        $SimpleDisplayName = ''
-		        }
-		        if ($objItem.distinguishedname) {
-			        $DN = $objItem.distinguishedname[0]
-		        } else {
-			        $DN = ''
-		        }
-                if ($objItem.employeenumber) {
-                    $employeeNumber = $objItem.employeenumber[0]
-                } else {
-                    $employeeNumber = ''
-                } 
-                #>
                 if ($objItem.useraccountcontrol) {
                     switch ($objItem.useraccountcontrol){
                         '512' {
@@ -563,106 +508,6 @@ function Get-2003User {
 		        } else {
 			        $userAccountControl = ''
 		        }
-		        <#
-                if ($objItem.mail) {
-			        $Email = $objItem.mail[0]
-		        } else {
-			        $Email = ''
-		        }
-		        if ($objItem.title) {
-			        $Title = $objItem.title[0]
-		        } else {
-			        $Title = ''
-		        }
-		        if ($objItem.department) {
-			        $Department = $objItem.department[0]
-		        } else {
-			        $Department = ''
-		        }
-		        if ($objItem.company) {
-			        $Company = $objItem.company[0]
-		        } else {
-			        $Company = ''
-		        }
-                if ($objItem.streetaddress) {
-			        $StreetAddress = $objItem.streetaddress[0]
-		        } else {
-			        $StreetAddress = ''
-		        }
-                if ($objItem.l) {
-			        $City = $objItem.l[0]
-		        } else {
-			        $City = ''
-		        }
-                if ($objItem.postalcode) {
-			        $PostalCode = $objItem.postalcode[0]
-		        } else {
-			        $PostalCode = ''
-		        }
-                if ($objItem.co) {
-			        $Country = $objItem.co[0]
-		        } else {
-			        $Country = ''
-		        }
-		        if ($objItem.physicaldeliveryofficename) {
-			        $Office = $objItem.physicaldeliveryofficename[0]
-		        } else {
-			        $Office = ''
-		        }
-		        if ($objItem.description) {
-			        $Description = $objItem.description[0]
-		        } else {
-			        $Description = ''
-		        }
-		        if ($objItem.homemdb) {
-			        $homeMDB = $objItem.homemdb[0]
-		        } else {
-			        $homeMDB = ''
-		        }
-                if ($objItem.proxyaddresses) {
-			        $proxyAddresses = $objItem.proxyaddresses
-		        }
-		        if ($objItem.telephonenumber) {
-			        $Phone = $objItem.telephonenumber[0]
-		        } else {
-			        $Phone = ''
-		        }	
-		        if ($objItem.othertelephone) {
-			        $Phone2 = $objItem.othertelephone
-		        } else {
-			        $Phone2 = @()
-		        }
-		        if ($objItem.mobile) {
-			        $MobilePhone = $objItem.mobile[0]
-		        } else {
-			        $MobilePhone = ''
-		        }
-                if ($objItem.facsimiletelephonenumber) {
-			        $fax = $objItem.facsimiletelephonenumber[0]
-		        } else {
-			        $fax = ''
-		        }
-                if ($objItem.homephone) {
-			        $homePhone = $objItem.homephone[0]
-		        } else {
-			        $homePhone = ''
-		        }
-		        if ($objItem.msexchassistantname) {
-			        $msExchAssistantName = $objItem.msexchassistantname[0]
-		        } else {
-			        $msExchAssistantName = ''
-		        }
-		        if ($objItem.telephoneassistant) {
-			        $telephoneAssistant = $objItem.telephoneassistant[0]
-		        } else {
-			        $telephoneAssistant = ''
-		        }
-                if ($objItem.objectcategory) {
-			        $objectCategory = $objItem.objectcategory[0]
-		        } else {
-			        $objectCategory = ''
-		        }
-                #>
                 if ($objItem.objectclass) {
 			        $objectClass = $objItem.objectclass
 		        } else {
@@ -673,18 +518,6 @@ function Get-2003User {
                 } else {
                     $PasswordLastChanged = ''
                 }
-                <#
-                if ($objItem.whenchanged) {
-			        $WhenChanged = Get-LocalTime $objItem.whenchanged[0]
-		        } else {
-			        $WhenChanged = ''
-		        }
-                if ($objItem.whencreated) {
-			        $WhenCreated = Get-LocalTime $objItem.whencreated[0]
-		        } else {
-			        $WhenCreated = ''
-		        }
-                #>
                 
                 foreach ( $item in (($objItem.distinguishedname[0]).replace('\,','~').split(","))) {
                     switch -regex ($item.TrimStart().Substring(0,3)) {
@@ -734,7 +567,7 @@ function Get-2003User {
                     'Office' = [String]$objDomain.physicaldeliveryofficename
                     'Description' = [String]$objItem.description
                     'HomeMDB' = [String]$objItem.homemdb
-                    'ProxyAddresses' = [String]($objItem.proxyaddresses -join ",")
+                    'ProxyAddresses' = [Array]$objItem.proxyaddresses
                     'Phone' = [String]$objItem.telephonenumber
                     'OtherTelephone' = [String]$objItem.othertelephone
                     'MobilePhone' = [String]$objItem.mobilenumber
@@ -751,13 +584,20 @@ function Get-2003User {
                 $obj.psobject.TypeNames.Insert(0,'PSExchange2003.GetUser.TypeName')
                 $returnCollection.Add($obj) > $null
                 $count++
-                if (($count % 200) -eq 0) {
+                <#
+                if (($count % $ResultSize) -eq 0) {
                     [System.GC]::Collect()
+                    [System.GC]::WaitForPendingFinalizers()
+                }
+                #>
+                if ($Progress) {
+                    Write-Progress -Activity "Generating Object #. $count from $($colResults.Count) for User: $($objItem.userprincipalname)" -PercentComplete (($count / $colResults.Count) * 100) -Status "Working.."
                 }
 	        }
         }
     }
     End {
+        #$colResults.Dispose()
 	    return $returnCollection
     }
 }
