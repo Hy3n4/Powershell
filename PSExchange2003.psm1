@@ -422,31 +422,31 @@ function Get-2003User {
     Begin {
         $WarningPreference = 'Continue'
         $ErrorActionPreference = 'Continue'
-        $returnCollection = @()
+        $returnCollection = New-Object System.Collections.ArrayList
         $objDomain = [ADSI]''
         $objSearcher = [ADSISEARCHER]""
         if ($Root){
-	        $objSearcher.SearchRoot = [ADSI]("LDAP://" + $Root)
+	        $objSearcher.SearchRoot = [ADSI]("LDAP://$Root")
         } else {
             $objSearcher.SearchRoot = $objDomain
         }
         $objSearcher.SizeLimit = $ResultSize
-        #$objSearcher.PageSize = 10
-        $objSearcher.SearchScope = "Subtree"
+        #$objSearcher.PageSize = $ResultSize / 10
+        $objSearcher.SearchScope = 'Subtree'
     }
     Process {
         foreach ($user in $Identity){
             if ($user) {
-                $strFilter = "(&(objectCategory=User)(|(sAMAccountName=" + $user + ")(displayName=" + $user + ")(cn=" + $user + ")))"   
+                $strFilter = "(&(objectCategory=User)(|(sAMAccountName=$user)(displayName=$user)(cn=$user)))"   
             } elseif ($Filter) {
-                $strFilter = "(&(objectCategory=User)(" + $Filter + "))"
+                $strFilter = "(&(objectCategory=User)($Filter))"
                 Write-Warning "Using filter: $strFilter to narrow results."
             } else {
-                $strFilter = "(&(objectCategory=person)(objectClass=organizationalPerson))"
+                $strFilter = '(&(objectCategory=person)(objectClass=organizationalPerson))'
                 Write-Warning "Result is limited to $ResultSize. Use -ResultSize option to increase search result size."
             }
 	        $objSearcher.Filter = $strFilter
-            $objSearcher.PropertiesToLoad.AddRange(('samaccountname','sidhistory','userprincipalname','givenname','sn','name','displayname','displaynameprintable','distinguishedname','employeenumber','useraccountcontrol','mail','title','department','company','streetaddress','l','postalcode','co','physicaldeliveryofficename','description','homemdb','proxyaddresses','telephonenumber','othertelephone','mobile','fascimiletelephonenumber','homephone','msexchassistantname','telephoneassistant','objectcategory','objectclass','pwdlastset','whenchanged','whencreated'))
+            $objSearcher.PropertiesToLoad.AddRange(@('samaccountname','sidhistory','userprincipalname','givenname','sn','name','displayname','displaynameprintable','distinguishedname','employeenumber','useraccountcontrol','mail','title','department','company','streetaddress','l','postalcode','co','physicaldeliveryofficename','description','homemdb','proxyaddresses','telephonenumber','othertelephone','mobile','fascimiletelephonenumber','homephone','msexchassistantname','telephoneassistant','objectcategory','objectclass','pwdlastset','whenchanged','whencreated'))
 	        Try {
 		        $colResults = $objSearcher.FindAll()
 	        } Catch {
@@ -461,17 +461,19 @@ function Get-2003User {
                 if ($Progress) {
                     Write-Progress -Activity "Generating Object #. $count from $($colResults.Count) for User: $($objItem.userprincipalname)" -PercentComplete (($count / $colResults.Count) * 100) -Status "Working.."
                 }
+                <#
                 if ($objItem.samaccountname) {
 			        $sAMAccountName = $objItem.samaccountname[0]
 		        } else {
 			        $sAMAccountName = ''
-		        }
+		        } #>
                 if ($objItem.objectsid) {
                     $stringSID = (New-Object System.Security.Principal.SecurityIdentifier($objItem.objectsid[0],0))
 			        $Sid =  $stringSID
 		        } else {
 			        $Sid = ''
 		        }
+                <#
                 if ($objItem.sidhistory) {
 			        $SidHistory = $objItem.sidhistory
 		        } else {
@@ -516,7 +518,8 @@ function Get-2003User {
                     $employeeNumber = $objItem.employeenumber[0]
                 } else {
                     $employeeNumber = ''
-                }
+                } 
+                #>
                 if ($objItem.useraccountcontrol) {
                     switch ($objItem.useraccountcontrol){
                         '512' {
@@ -560,7 +563,8 @@ function Get-2003User {
 		        } else {
 			        $userAccountControl = ''
 		        }
-		        if ($objItem.mail) {
+		        <#
+                if ($objItem.mail) {
 			        $Email = $objItem.mail[0]
 		        } else {
 			        $Email = ''
@@ -658,6 +662,7 @@ function Get-2003User {
 		        } else {
 			        $objectCategory = ''
 		        }
+                #>
                 if ($objItem.objectclass) {
 			        $objectClass = $objItem.objectclass
 		        } else {
@@ -668,6 +673,7 @@ function Get-2003User {
                 } else {
                     $PasswordLastChanged = ''
                 }
+                <#
                 if ($objItem.whenchanged) {
 			        $WhenChanged = Get-LocalTime $objItem.whenchanged[0]
 		        } else {
@@ -678,8 +684,9 @@ function Get-2003User {
 		        } else {
 			        $WhenCreated = ''
 		        }
+                #>
                 
-                foreach ( $item in ($DN.replace('\,','~').split(","))) {
+                foreach ( $item in (($objItem.distinguishedname[0]).replace('\,','~').split(","))) {
                     switch -regex ($item.TrimStart().Substring(0,3)) {
                         "CN=" {
                             $CN = '/' + $item.replace("CN=","")
@@ -702,47 +709,47 @@ function Get-2003User {
                 }
                 $identityCn = $canoincalOu + $CN
 		        $obj = New-Object PSCustomObject -Property @{
-                    'Name' = $Name
-                    'SamAccountName' = $sAMAccountName
+                    'Name' = [String]$objItem.name
+                    'SamAccountName' = [String]$objItem.samaccountname
                     'Sid' = $Sid
-                    'SidHistory' = $SidHistory
-                    'UserPrincipalName' = $UserPrincipalName
+                    'SidHistory' = [String]$objItem.sidhistory
+                    'UserPrincipalName' = [String]$objItem.userprincipalname
                     'OrganizationalUnit' = $canoincalOu
                     'Identity' = $identityCn
                     'UserAccountControl' = $userAccountControl
-                    'FirstName' = $FirstName
-                    'Lastname' = $lastName
-                    'DisplayName' = $DisplayName
-                    'SimpleDisplayName' = $SimpleDisplayName
-                    'DistinguishedName' = $DN
-                    'EmployeeNumber' = $employeeNumber
-                    'WindowsEmailAddress' = $Email
-                    'Title' = $Title
-                    'Department' = $Department
-                    'Company' = $Company
-                    'StreetAddress' = $StreetAddress
-                    'City' = $City
-                    'PostalCode' = $PostalCode
-                    'CountryOrRegion' = $Country
-                    'Office' = $Office
-                    'Description' = $Description
-                    'HomeMDB' = $homeMDB
-                    'ProxyAddresses' = $proxyAddresses
-                    'Phone' = $Phone
-                    'OtherTelephone' = $Phone2
-                    'MobilePhone' = $MobilePhone
-                    'Fax' = $fax
-                    'HomePhone' = $homePhone
-                    'AssistantName' = $msExchAssistantName
-                    'TelephoneAssistant' = $telephoneAssistant
-                    'ObjectCategory' = $objectCategory
-                    'ObjectClass' = $objectClass
+                    'FirstName' = [String]$objItem.givenname
+                    'Lastname' = [String]$objItem.sn
+                    'DisplayName' = [String]$objItem.displayname
+                    'SimpleDisplayName' = [String]$objItem.displaynameprintable
+                    'DistinguishedName' = [String]$objItem.distinguishedname
+                    'EmployeeNumber' = [String]$objItem.employeenumber
+                    'WindowsEmailAddress' = [String]$objItem.mail
+                    'Title' = [String]$objItem.title
+                    'Department' = [String]$objItem.department
+                    'Company' = [String]$objItem.company
+                    'StreetAddress' = [String]$objItem.streetaddress
+                    'City' = [String]$objItem.l
+                    'PostalCode' = [String]$objItem.postalcode
+                    'CountryOrRegion' = [String]$objItem.co
+                    'Office' = [String]$objDomain.physicaldeliveryofficename
+                    'Description' = [String]$objItem.description
+                    'HomeMDB' = [String]$objItem.homemdb
+                    'ProxyAddresses' = [String]($objItem.proxyaddresses -join ",")
+                    'Phone' = [String]$objItem.telephonenumber
+                    'OtherTelephone' = [String]$objItem.othertelephone
+                    'MobilePhone' = [String]$objItem.mobilenumber
+                    'Fax' = [String]$objItem.facsimiletelephonenumber
+                    'HomePhone' = [String]$objItem.homephone
+                    'AssistantName' = [String]$objItem.msexchassistantname
+                    'TelephoneAssistant' = [String]$objItem.telephoneassistant
+                    'ObjectCategory' = [String]$objItem.objectcategory
+                    'ObjectClass' = [String]$objItem.objectclass
                     'PasswordLastChanged' = $PasswordLastChanged
-                    'WhenChanged' = $WhenChanged
-                    'WhenCreated' = $WhenCreated
+                    'WhenChanged' = [String]$objItem.whenchanged
+                    'WhenCreated' = [String]$objItem.whencreated
                 }
                 $obj.psobject.TypeNames.Insert(0,'PSExchange2003.GetUser.TypeName')
-                $returnCollection += $obj
+                $returnCollection.Add($obj) > $null
                 $count++
                 if (($count % 200) -eq 0) {
                     [System.GC]::Collect()
